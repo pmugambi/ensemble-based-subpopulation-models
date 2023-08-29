@@ -348,9 +348,9 @@ def predict_discharge_for_sub_populations():
     for pii in piis:
         print("****** fitting a single model for each subgroup. now fitting models for: " + pii + " ****")
         if pii == "sex":
-            male_train_X, female_train_X, male_train_ys, female_train_ys, male_X_cols, female_X_cols = obtain_subgroups(
+            male_train_X, female_train_X, male_train_ys, female_train_ys, _, _ = obtain_subgroups(
                 task="train", pii=pii, df=train_df)
-            male_test_X, female_test_X, male_test_ys, female_test_ys, _, _ = obtain_subgroups(
+            male_test_X, female_test_X, male_test_ys, female_test_ys, male_X_cols, female_X_cols = obtain_subgroups(
                 task="train", pii=pii, df=test_df, preprocess=False)
             # build models
             predict_discharge(X_train=male_train_X, train_ys=male_train_ys, X_test=male_test_X, test_ys=male_test_ys,
@@ -651,8 +651,8 @@ def ensemble_on_entire_population():
                            ensemble_cv_save_name=insurance_train_save_dir + "cv-results-for-ensemble-soft-by"
                                                                             "-insurance.csv",
                            ensemble_predictions_save_name=insurance_pred_save_dir + "features-and-predictions-of"
-                                                                                    "-ensemble-by "
-                                                                                    "-insurance.csv")
+                                                                                    "-ensemble-by-"
+                                                                                    "insurance.csv")
 
         # by age-group
         forties_X, fifties_X, sixties_X, seventies_X, eight_and_over_X, forties_ys, fifties_ys, sixties_ys, \
@@ -697,8 +697,8 @@ def ensemble_on_entire_population():
                            ensemble_cv_save_name=insurance_train_save_dir + "cv-results-for-ensemble-soft-by"
                                                                             "-age-group.csv",
                            ensemble_predictions_save_name=insurance_pred_save_dir + "features-and-predictions-of"
-                                                                                    "-ensemble-by "
-                                                                                    "-age-group.csv")
+                                                                                    "-ensemble-by-"
+                                                                                    "age-group.csv")
 
 
 def ensemble_top_down(estimators, train_Xs, test_Xs, train_group_ys, test_group_ys, group_names, i, cols,
@@ -999,6 +999,8 @@ def process_training_data(train_df, test_df=None, preprocess=True):
     cols = train_X.columns.tolist()
     if preprocess:  # todo: this causes a bug, when value is True, check why
         train_X = pre_modeling_pipeline(train_X=train_X)
+    else:
+        train_X = train_X.to_numpy()
     train_y1 = train_df["died-in-hosp?"].to_numpy()
     train_y2 = train_df["fav-disch-loc?"].to_numpy()
     if test_df is not None:
@@ -1006,6 +1008,9 @@ def process_training_data(train_df, test_df=None, preprocess=True):
         test_X = test_df.drop(columns=["died-in-hosp?", "fav-disch-loc?"])
         if preprocess:  # todo: this causes a bug, when value is True, check why
             train_X, test_X = pre_modeling_pipeline(train_X=train_X, test_X=test_X)
+        else:
+            train_X = train_X.to_numpy()
+            test_X = test_X.to_numpy()
         test_y1 = test_df["died-in-hosp?"].to_numpy()
         test_y2 = test_df["fav-disch-loc?"].to_numpy()
         return cols, train_X, test_X, [train_y1, train_y2], [test_y1, test_y2]
@@ -1393,12 +1398,12 @@ def plot_all_evaluation_results():
 
 # read_data()
 # predict_discharge_on_entire_population()
-predict_discharge_for_sub_populations()  # todo: START here, debug this. sungroups behaving badly, could be a cols thing
+# predict_discharge_for_sub_populations()
 # ensemble_on_entire_population()
 # ensemble_on_subpopulations()
 # write_performance_of_models(model_type="single-model")
 # write_performance_of_models(model_type="ensemble")
-# plot_all_evaluation_results()
+plot_all_evaluation_results()
 # plot_training_results() # todo: revise this, determine if it needs to be here
 
 # todo: plot the graph of F1 with best model, very F1 with ensemble bottom-up
