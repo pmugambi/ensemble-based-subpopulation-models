@@ -1,0 +1,8 @@
+,model-name,cv-accuracy-raw,cv-accuracy-mean,cv-balanced-accuracy-raw,cv-balanced-accuracy-mean,cv-f1-raw,cv-f1-mean,cv-precision-raw,cv-precision-mean,cv-recall-raw,cv-recall-mean,cv-auc-raw,cv-auc-mean
+0,dt,[nan nan nan nan nan],,[nan nan nan nan nan],,[nan nan nan nan nan],,[nan nan nan nan nan],,[nan nan nan nan nan],,[nan nan nan nan nan],
+1,rf,[nan nan nan nan nan],,[nan nan nan nan nan],,[nan nan nan nan nan],,[nan nan nan nan nan],,[nan nan nan nan nan],,[nan nan nan nan nan],
+2,log-reg,[nan nan nan nan nan],,[nan nan nan nan nan],,[nan nan nan nan nan],,[nan nan nan nan nan],,[nan nan nan nan nan],,[nan nan nan nan nan],
+3,gb,[nan nan nan nan nan],,[nan nan nan nan nan],,[nan nan nan nan nan],,[nan nan nan nan nan],,[nan nan nan nan nan],,[nan nan nan nan nan],
+4,mlp,[nan nan nan nan nan],,[nan nan nan nan nan],,[nan nan nan nan nan],,[nan nan nan nan nan],,[nan nan nan nan nan],,[nan nan nan nan nan],
+5,svm,[nan nan nan nan nan],,[nan nan nan nan nan],,[nan nan nan nan nan],,[nan nan nan nan nan],,[nan nan nan nan nan],,[nan nan nan nan nan],
+6,xgb,[nan nan nan nan nan],,[nan nan nan nan nan],,[nan nan nan nan nan],,[nan nan nan nan nan],,[nan nan nan nan nan],,[nan nan nan nan nan],

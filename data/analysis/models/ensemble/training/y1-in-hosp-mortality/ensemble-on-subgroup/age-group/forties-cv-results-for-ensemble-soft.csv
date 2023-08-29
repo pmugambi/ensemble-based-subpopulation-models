@@ -1,0 +1,2 @@
+,cv-accuracy-raw,cv-accuracy-mean,cv-balanced-accuracy-raw,cv-balanced-accuracy-mean,cv-f1-raw,cv-f1-mean,cv-precision-raw,cv-precision-mean,cv-recall-raw,cv-recall-mean,cv-auc-raw,cv-auc-mean
+0,[       nan        nan 0.96551724 0.96551724        nan],,[nan nan 0.5 0.5 nan],,[nan nan  0.  0. nan],,[       nan        nan 0.48275862 0.48275862        nan],,[nan nan 0.5 0.5 nan],,[       nan        nan 0.71428571 0.75              nan],
