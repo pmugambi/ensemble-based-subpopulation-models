@@ -551,15 +551,28 @@ def ensemble_on_entire_population():
     outcomes = ["y1-in-hosp-mortality", "y2-favorable-discharge-loc"]
     classifiers, classifiers_names = classifiers_to_test()
 
+    # estimators = {
+    #     "y1-in-hosp-mortality": [("rf", classifiers[classifiers_names.index("rf")]),
+    #                              ("xgb", classifiers[classifiers_names.index("xgb")])],
+    #                              # ("mlp", classifiers[classifiers_names.index("mlp")])],
+    #     # todo: play with this and see effect of more models. for now, just adding the top 3 models for each
+    #     "y2-favorable-discharge-loc": [("gb", classifiers[classifiers_names.index("gb")]),
+    #                                    ("log-reg", classifiers[classifiers_names.index("log-reg")])]
+    #                                    # ("mlp", classifiers[classifiers_names.index("mlp")])]
+    # }
     estimators = {
-        "y1-in-hosp-mortality": [("rf", classifiers[classifiers_names.index("rf")]),
-                                 ("xgb", classifiers[classifiers_names.index("xgb")]),
-                                 ("mlp", classifiers[classifiers_names.index("mlp")])],
-        # todo: play with this and see effect of more models. for now, just adding the top 3 models for each
-        "y2-favorable-discharge-loc": [("gb", classifiers[classifiers_names.index("gb")]),
-                                       ("log-reg", classifiers[classifiers_names.index("log-reg")]),
-                                       ("mlp", classifiers[classifiers_names.index("mlp")])]
-    }
+        "y1-in-hosp-mortality": [
+            # ("xgb", classifiers[classifiers_names.index("xgb")]),
+            ("rf", classifiers[classifiers_names.index("rf")]),
+            ("mlp", classifiers[classifiers_names.index("mlp")])],
+        # ("gb", classifiers[classifiers_names.index("gb")])],
+        "y2-favorable-discharge-loc": [
+            # ("gb", classifiers[classifiers_names.index("gb")]),
+            ("log-reg", classifiers[classifiers_names.index("log-reg")]),
+            ("mlp", classifiers[classifiers_names.index("mlp")])]
+        # ("svm", classifiers[classifiers_names.index("svm")])]
+    }  # todo: right now picking 2nd-4th best models for the entire population.
+    #       Think whether it makes sense to pick best models by subpopulations
 
     train_df = pd.read_csv("./data/mimic-train.csv")
     train_df = train_df.drop(train_df.filter(regex='Unnamed').columns, axis=1)
@@ -779,12 +792,16 @@ def ensemble_on_subpopulations():
     classifiers, classifiers_names = classifiers_to_test()
 
     estimators = {
-        "y1-in-hosp-mortality": [("rf", classifiers[classifiers_names.index("rf")]),
-                                 ("mlp", classifiers[classifiers_names.index("mlp")]),
-                                 ("gb", classifiers[classifiers_names.index("gb")])],
-        "y2-favorable-discharge-loc": [("log-reg", classifiers[classifiers_names.index("log-reg")]),
-                                       ("mlp", classifiers[classifiers_names.index("mlp")]),
-                                       ("svm", classifiers[classifiers_names.index("svm")])]
+        "y1-in-hosp-mortality": [
+            # ("xgb", classifiers[classifiers_names.index("xgb")]),
+            ("rf", classifiers[classifiers_names.index("rf")]),
+            ("mlp", classifiers[classifiers_names.index("mlp")])],
+        # ("gb", classifiers[classifiers_names.index("gb")])],
+        "y2-favorable-discharge-loc": [
+            # ("gb", classifiers[classifiers_names.index("gb")]),
+            ("log-reg", classifiers[classifiers_names.index("log-reg")]),
+            ("mlp", classifiers[classifiers_names.index("mlp")])]
+        # ("svm", classifiers[classifiers_names.index("svm")])]
     }  # todo: right now picking 2nd-4th best models for the entire population.
     #       Think whether it makes sense to pick best models by subpopulations
 
@@ -860,11 +877,11 @@ def ensemble_on_subpopulations():
                           train_save_dir=insurance_train_save_dir, pred_save_dir=insurance_pred_save_dir)
         # by age-group
         forties_train_X, fifties_train_X, sixties_train_X, seventies_train_X, eighty_and_over_train_X, \
-            forties_train_ys, fifties_train_ys, sixties_train_ys, seventies_train_ys, \
-            eighty_and_over_train_ys, _, _, _, _, _ = obtain_subgroups(task="train", pii="age-group", df=train_df)
+        forties_train_ys, fifties_train_ys, sixties_train_ys, seventies_train_ys, \
+        eighty_and_over_train_ys, _, _, _, _, _ = obtain_subgroups(task="train", pii="age-group", df=train_df)
         forties_test_X, fifties_test_X, sixties_test_X, seventies_test_X, eighty_and_over_test_X, \
-            forties_test_ys, fifties_test_ys, sixties_test_ys, seventies_test_ys, \
-            eighty_and_over_test_ys, _, _, _, _, _ = obtain_subgroups(task="train", pii="age-group", df=test_df,
+        forties_test_ys, fifties_test_ys, sixties_test_ys, seventies_test_ys, \
+        eighty_and_over_test_ys, _, _, _, _, _ = obtain_subgroups(task="train", pii="age-group", df=test_df,
                                                                   preprocess=False)
         age_group_train_save_dir = "./data/analysis/models/ensemble/training/" + outcomes[i] + \
                                    "/ensemble-on-subgroup/age-group/"
@@ -1028,7 +1045,8 @@ def evaluate_performance_of_single_models(level, pii, y_name, metric):
 
     # entire population
     if level == "entire-population":
-        groups_performance = []
+        un_c_groups_performance = []
+        c_groups_performance = []
         # get the classifier with the best performance
         cv_training_results_df = pd.read_csv("./data/analysis/models/single-model/training/" + y_name +
                                              "/entire-population/cv-training-results-for-" + y_name +
@@ -1039,12 +1057,12 @@ def evaluate_performance_of_single_models(level, pii, y_name, metric):
                                         "/entire-population/features-and-prediction-results-for-" + y_name +
                                         "-entire-population.csv")
         # evaluate entire population's performance
-        # print("testing====", best_ep_clf + "-preds", ep_predictions_df.columns.tolist(), ep_predictions_df[best_ep_clf+"-preds"])
         ep_f1, ep_accuracy, ep_precision, ep_recall = evaluate_model_performance(
             true_y=ep_predictions_df["true-y"], predicted_y=ep_predictions_df[best_ep_clf + "-preds"])
-        groups_performance.append(["entire-population", "", ep_accuracy, ep_f1, ep_precision, ep_recall])
-
-        # todo: add code for calibrated models
+        un_c_groups_performance.append(["entire-population", "", ep_accuracy, ep_f1, ep_precision, ep_recall])
+        ep_c_f1, ep_c_accuracy, ep_c_precision, ep_c_recall = evaluate_model_performance(
+            true_y=ep_predictions_df["true-y"], predicted_y=ep_predictions_df[best_ep_clf + "-iso-c-preds"])
+        c_groups_performance.append(["entire-population", "", ep_c_accuracy, ep_c_f1, ep_c_precision, ep_c_recall])
 
         if pii == "sex":
             groups = sex_group_names
@@ -1065,8 +1083,13 @@ def evaluate_performance_of_single_models(level, pii, y_name, metric):
             group_df = group_dfs[j]
             group_binary_f1, group_accuracy, group_precision, group_recall = evaluate_model_performance(
                 true_y=group_df["true-y"], predicted_y=group_df[best_ep_clf + "-preds"])
-            groups_performance.append([groups[j], pii, group_accuracy, group_binary_f1, group_precision, group_recall])
-        return groups_performance
+            group_c_binary_f1, group_c_accuracy, group_c_precision, group_c_recall = evaluate_model_performance(
+                true_y=group_df["true-y"], predicted_y=group_df[best_ep_clf + "-iso-c-preds"])
+            un_c_groups_performance.append([groups[j], pii, group_accuracy, group_binary_f1, group_precision,
+                                            group_recall])
+            c_groups_performance.append([groups[j], pii, group_c_accuracy, group_c_binary_f1, group_c_precision,
+                                         group_c_recall])
+        return un_c_groups_performance, c_groups_performance
     # subpopulation
     elif level == "subgroup":
         if pii == "sex":
@@ -1099,33 +1122,39 @@ def evaluate_performance_of_single_models(level, pii, y_name, metric):
             groups_performance.append([groups[j], pii, group_accuracy, group_binary_f1, group_precision, group_recall])
         return groups_performance
 
-    # # todo: handle calibrated models here
-
 
 def write_performance_of_models(model_type):
     y_names = ["y1-in-hosp-mortality", "y2-favorable-discharge-loc"]
     metrics = ["f1", "accuracy"]
     piis = ["sex", "race", "insurance", "age-group"]
     for i in range(len(y_names)):
-        ep_y_performances = []
+        ep_unc_y_performances = []
+        ep_c_y_performances = []
         sb_y_performances = []
         for pii in piis:
             if model_type == "single-model":
-                ep_y_performances.append(evaluate_performance_of_single_models(level="entire-population", pii=pii,
-                                                                               y_name=y_names[i], metric=metrics[i]))
+                unc_res, c_res = evaluate_performance_of_single_models(level="entire-population", pii=pii,
+                                                                       y_name=y_names[i], metric=metrics[i])
+                ep_unc_y_performances.append(unc_res)
+                ep_c_y_performances.append(c_res)
                 sb_y_performances.append(evaluate_performance_of_single_models(level="subgroup", pii=pii,
                                                                                y_name=y_names[i], metric=metrics[i]))
             elif model_type == "ensemble":
-                ep_y_performances.append(evaluate_performance_of_ensemble_models(level="entire-population", pii=pii,
-                                                                                 y_name=y_names[i]))
+                ep_unc_y_performances.append(evaluate_performance_of_ensemble_models(level="entire-population", pii=pii,
+                                                                                     y_name=y_names[i]))
                 sb_y_performances.append(evaluate_performance_of_ensemble_models(level="subgroup", pii=pii,
                                                                                  y_name=y_names[i]))
-        ep_y_performances = flatten(ep_y_performances)
+        ep_unc_y_performances = flatten(ep_unc_y_performances)
+        ep_c_y_performances = flatten(ep_c_y_performances)
         sb_y_performances = flatten(sb_y_performances)
-        ep_y_performances_clean = []
-        [ep_y_performances_clean.append(x) for x in ep_y_performances if x not in ep_y_performances_clean]
-        ep_performances_df = pd.DataFrame(data=ep_y_performances_clean, columns=["category", "pii", "accuracy", "f1",
-                                                                                 "precision", "recall"])
+        ep_unc_y_performances_clean = []
+        ep_c_y_performances_clean = []
+        [ep_unc_y_performances_clean.append(x) for x in ep_unc_y_performances if x not in ep_unc_y_performances_clean]
+        [ep_c_y_performances_clean.append(x) for x in ep_c_y_performances if x not in ep_c_y_performances_clean]
+        ep_unc_performances_df = pd.DataFrame(data=ep_unc_y_performances_clean,
+                                              columns=["category", "pii", "accuracy", "f1", "precision", "recall"])
+        ep_c_performances_df = pd.DataFrame(data=ep_c_y_performances_clean,
+                                            columns=["category", "pii", "accuracy", "f1", "precision", "recall"])
         sb_performances_df = pd.DataFrame(data=sb_y_performances, columns=["group", "pii", "accuracy", "f1",
                                                                            "precision", "recall"])
 
@@ -1141,11 +1170,15 @@ def write_performance_of_models(model_type):
             return ValueError("The value for model-type passed is incorrect. Expected values are:"
                               " 'single-model' and 'ensemble'")
 
-        print("ep_performances_df.head() = ", ep_performances_df.head())
+        print("ep_unc_performances_df.head() = ", ep_unc_performances_df.head())
+        print("ep_c_performances_df.head() = ", ep_c_performances_df.head())
         print("sb_performances_df.head() = ", sb_performances_df.head())
-        ep_performances_df.to_csv(
-            ep_dir + "performance-of-the-" + save_word + "-model-trained-on-entire-population-for-" + y_names[
-                i] + ".csv")
+        ep_unc_performances_df.to_csv(
+            ep_dir + "performance-of-the-" + save_word + "-uncalibrated-model-trained-on-entire-population-for-"
+            + y_names[i] + ".csv")
+        ep_c_performances_df.to_csv(
+            ep_dir + "performance-of-the-" + save_word + "-calibrated-model-trained-on-entire-population-for-"
+            + y_names[i] + ".csv")
         sb_performances_df.to_csv(
             sb_dir + "performance-of-the-" + save_word + "-model-trained-on-various-subgroups-for-" + y_names[
                 i] + ".csv")
@@ -1162,8 +1195,8 @@ def evaluate_performance_of_ensemble_models(level, pii, y_name):
     if level == "entire-population":
         y_performances = []
         ep_predictions_df = pd.read_csv("./data/analysis/models/ensemble/prediction/" + y_name +
-                                        "/ensemble-on-entire-population/" + pii + "/features-and-predictions-of-ensemble-by"
-                                                                                  "-" + pii + ".csv")
+                                        "/ensemble-on-entire-population/" + pii +
+                                        "/features-and-predictions-of-ensemble-by-" + pii + ".csv")
 
         he_ep_f1, he_ep_accuracy, he_ep_precision, he_ep_recall = evaluate_model_performance(
             true_y=ep_predictions_df["true-y"], predicted_y=ep_predictions_df["ensemble-h-preds"])
@@ -1285,7 +1318,8 @@ def plot_f1_and_accuracy(f1_scores, accuracy_scores, precision_scores, recall_sc
     plt.show()
 
 
-def plot_single_model_vs_ensemble_results(results, metric_labels, level, save_name, fig_width=12, fig_height=8):
+def plot_single_model_vs_ensemble_results(results, metric_labels, level, save_name, fig_width=12, fig_height=8,
+                                          colors=None):
     """
 
     :param results:
@@ -1294,6 +1328,7 @@ def plot_single_model_vs_ensemble_results(results, metric_labels, level, save_na
     :param save_name:
     :param fig_width:
     :param fig_height:
+    :param colors:
     :return:
     """
 
@@ -1305,15 +1340,20 @@ def plot_single_model_vs_ensemble_results(results, metric_labels, level, save_na
     fig, ax = plt.subplots(layout='constrained')
     fig.set_size_inches(fig_width, fig_height)
     y_max = 0
+    ind = 0
 
     for model_type, model_results in results.items():
-        print("model type = ", model_type)
-        print("model results = ", model_results)
+        # print("model type = ", model_type)
+        # print("model results = ", model_results)
         offset = width * multiplier
-        rects = ax.bar(x + offset, model_results, width, label=model_type)
+        if colors is not None:
+            rects = ax.bar(x + offset, model_results, width, label=model_type, color=colors[ind])
+        else:
+            rects = ax.bar(x + offset, model_results, width, label=model_type)
         ax.bar_label(rects, padding=3)
         multiplier += 1
         y_max = max(y_max, max(model_results))
+        ind += 1
 
     # Add some text for labels, title and custom x-axis tick labels, etc.
     ax.set_ylabel("Score")
@@ -1322,7 +1362,8 @@ def plot_single_model_vs_ensemble_results(results, metric_labels, level, save_na
     ax.legend(loc="upper right")  # , ncols=3)
     ax.set_ylim(0, y_max + 0.25)
     plt.savefig(save_name)
-    plt.show()
+    # plt.show()
+    plt.close()
 
 
 def plot_all_evaluation_results():
@@ -1330,10 +1371,35 @@ def plot_all_evaluation_results():
     y_names = ["y1-in-hosp-mortality", "y2-favorable-discharge-loc"]
     for y in y_names:
         ep_y_results = {}
-        ep_sm_y_results_df = pd.read_csv("./data/analysis/models/single-model/evaluation/" + y +
-                                         "/entire-population/performance-of-the-best-model-trained-on-entire"
-                                         "-population-for-" + y + ".csv")
-        ep_sm_values = ep_sm_y_results_df[ep_sm_y_results_df["category"] == "entire-population"][
+        ep_unc_vs_c_results = {}
+        ep_sm_unc_y_results_df = pd.read_csv("./data/analysis/models/single-model/evaluation/" + y +
+                                             "/entire-population/performance-of-the-best-uncalibrated-model-trained-on"
+                                             "-entire-population-for-" + y + ".csv")
+        ep_sm_c_y_results_df = pd.read_csv("./data/analysis/models/single-model/evaluation/" + y +
+                                           "/entire-population/performance-of-the-best-calibrated-model-trained-on"
+                                           "-entire-population-for-" + y + ".csv")
+
+        # build and plot models of entire population, single-uncalibrated vs single-calibrated
+        ep_unc_values = ep_sm_unc_y_results_df[ep_sm_unc_y_results_df["category"] == "entire-population"][
+            ["accuracy", "f1", "precision", "recall"]].values.tolist()[0]
+        ep_c_values = ep_sm_c_y_results_df[ep_sm_c_y_results_df["category"] == "entire-population"][
+            ["accuracy", "f1", "precision", "recall"]].values.tolist()[0]
+
+        print("ep_unc_values = ", ep_unc_values)
+        print("ep_cc_values = ", ep_c_values)
+        ep_unc_vs_c_results["uncalibrated"] = [round(x, 2) for x in ep_unc_values]
+        ep_unc_vs_c_results["calibrated"] = [round(x, 2) for x in ep_c_values]
+        ep_save_dir = "./data/analysis/results/entire-population/" + y + "/"
+        Path(ep_save_dir).mkdir(parents=True, exist_ok=True)
+        plot_single_model_vs_ensemble_results(results=ep_unc_vs_c_results,
+                                              metric_labels=["accuracy", "f1", "precision", "recall"],
+                                              level="entire-population", fig_width=8, fig_height=6,
+                                              save_name=ep_save_dir + "comparison-of-uncalibrated-and-calibrated-one"
+                                                                      "-model-for-all-fit-on-entire-population-for-"
+                                                        + y + ".png")
+
+        # build and plot models of entire population, single-uncalibrated vs ensemble
+        ep_sm_values = ep_sm_unc_y_results_df[ep_sm_unc_y_results_df["category"] == "entire-population"][
             ["accuracy", "f1", "precision", "recall"]].values.tolist()[0]
         print("ep_values = ", ep_sm_values)
         ep_y_results["single-model"] = [round(x, 2) for x in ep_sm_values]
@@ -1347,8 +1413,7 @@ def plot_all_evaluation_results():
         ep_y_results["ensemble-by-insurance"] = [round(x, 2) for x in ep_en_values[2]]
         ep_y_results["ensemble-by-age-group"] = [round(x, 2) for x in ep_en_values[3]]
         print("y_results = ", ep_y_results)
-        ep_save_dir = "./data/analysis/results/entire-population/" + y + "/"
-        Path(ep_save_dir).mkdir(parents=True, exist_ok=True)
+
         plot_single_model_vs_ensemble_results(results=ep_y_results,
                                               metric_labels=["accuracy", "f1", "precision", "recall"],
                                               level="entire-population", fig_width=11,
@@ -1366,23 +1431,120 @@ def plot_all_evaluation_results():
         piis = sb_sm_y_results["pii"].values.tolist()
         sm_separate_results = sb_sm_y_results[["accuracy", "f1", "precision", "recall"]].values.tolist()
         en_results = sb_en_y_results[["accuracy", "f1", "precision", "recall"]].values.tolist()
-        sm_shared_results = ep_sm_y_results_df[ep_sm_y_results_df["category"] != "entire-population"][
+        sm_unc_shared_results = ep_sm_unc_y_results_df[ep_sm_unc_y_results_df["category"] != "entire-population"][
+            ["accuracy", "f1", "precision", "recall"]].values.tolist()
+        sm_c_shared_results = ep_sm_c_y_results_df[ep_sm_c_y_results_df["category"] != "entire-population"][
             ["accuracy", "f1", "precision", "recall"]].values.tolist()
         sb_save_dir = "./data/analysis/results/subgroup/" + y + "/"
         Path(sb_save_dir).mkdir(parents=True, exist_ok=True)
         for i in range(len(subgroups)):
+            sb_en_ep_results = evaluate_ensemble_on_entire_population_for_subgroups(y_name=y, pii=piis[i],
+                                                                                    subgroup=subgroups[i])
             sb_y_results = {}
+            sb_unc_vs_c_results = {}
             print("subgroup = ", subgroups[i])
             print("pii = ", piis[i])
-            sb_y_results["single-model-shared"] = [round(x, 2) for x in sm_shared_results[i]]
-            sb_y_results["single-model-separate"] = [round(x, 2) for x in sm_separate_results[i]]
-            sb_y_results["ensemble"] = [round(x, 2) for x in en_results[i]]
+            sb_y_results["one-model-for-all"] = [round(x, 2) for x in sm_unc_shared_results[i]]
+            sb_y_results["one-model-per-subgroup"] = [round(x, 2) for x in sm_separate_results[i]]
+            sb_y_results["ensemble-on-all"] = [round(x, 2) for x in sb_en_ep_results]
+            sb_y_results["ensemble-on-subgroup"] = [round(x, 2) for x in en_results[i]]
             plot_single_model_vs_ensemble_results(results=sb_y_results,
                                                   metric_labels=["accuracy", "f1", "precision", "recall"],
                                                   level="subgroup-by-" + piis[i] + ": " + subgroups[i],
-                                                  fig_width=9, fig_height=6,
+                                                  fig_width=10, fig_height=7,
                                                   save_name=sb_save_dir + "comparison-of-single-and-ensemble-models-on"
-                                                                          "-" + subgroups[i] + "-for-" + y + ".png")
+                                                                          "-" + subgroups[i] + "-for-" + y + ".png",
+                                                  colors=["cornflowerblue", "blue", "sandybrown", "sienna"])
+
+            # calibrated vs uncalibrated models for all, performance per subgroup
+            sb_calibration_save_dir = sb_save_dir + "/calibration/"
+            Path(sb_calibration_save_dir).mkdir(parents=True, exist_ok=True)
+            sb_unc_vs_c_results["uncalibrated-one-model-for-all"] = [round(x, 2) for x in sm_unc_shared_results[i]]
+            sb_unc_vs_c_results["calibrated-one-model-for-all"] = [round(x, 2) for x in sm_c_shared_results[i]]
+            plot_single_model_vs_ensemble_results(results=sb_unc_vs_c_results,
+                                                  metric_labels=["accuracy", "f1", "precision", "recall"],
+                                                  level="subgroup-by-" + piis[i] + ": " + subgroups[i],
+                                                  fig_width=8, fig_height=6,
+                                                  save_name=sb_calibration_save_dir +
+                                                            "comparison-of-single-calibrated-vs-uncalibrated-model-for-"
+                                                            + y + "-for-" + subgroups[i] + ".png", )
+
+    # colors = ["cornflowerblue", "royalblue", "orange", "darkorange"]
+    # colors = ["cornflowerblue", "blue", "moccasin", "orange"]
+
+
+def evaluate_ensemble_on_entire_population_for_subgroups(y_name, pii, subgroup):
+    en_on_ep_df = pd.read_csv("./data/analysis/models/ensemble/prediction/"
+                              + y_name + "/ensemble-on-entire-population/" + pii +
+                              "/features-and-predictions-of-ensemble-by-"
+                              + pii + ".csv")
+    if pii == "sex":
+        male_df, female_df = obtain_subgroups(task="evaluate", pii=pii, df=en_on_ep_df, preprocess=False)
+        m_f1, m_acc, m_precision, m_recall = evaluate_model_performance(true_y=male_df["true-y"].to_numpy(),
+                                                                        predicted_y=male_df[
+                                                                            "ensemble-h-preds"].to_numpy())
+        f_f1, f_acc, f_precision, f_recall = evaluate_model_performance(true_y=female_df["true-y"].to_numpy(),
+                                                                        predicted_y=female_df[
+                                                                            "ensemble-h-preds"].to_numpy())
+        if subgroup == "male":
+            return m_acc, m_f1, m_precision, m_recall
+        elif subgroup == "female":
+            return f_acc, f_f1, f_precision, f_recall
+    elif pii == "race":
+        white_df, non_white_df = obtain_subgroups(task="evaluate", pii=pii, df=en_on_ep_df, preprocess=False)
+        w_f1, w_acc, w_precision, w_recall = evaluate_model_performance(true_y=white_df["true-y"].to_numpy(),
+                                                                        predicted_y=white_df[
+                                                                            "ensemble-h-preds"].to_numpy())
+        nw_f1, nw_acc, nw_precision, nw_recall = evaluate_model_performance(true_y=non_white_df["true-y"].to_numpy(),
+                                                                            predicted_y=non_white_df[
+                                                                                "ensemble-h-preds"].to_numpy())
+        if subgroup == "white":
+            return w_acc, w_f1, w_precision, w_recall
+        elif subgroup == "non-white":
+            return nw_acc, nw_f1, nw_precision, nw_recall
+    elif pii == "insurance":
+        private_df, government_df = obtain_subgroups(task="evaluate", pii=pii, df=en_on_ep_df, preprocess=False)
+        p_f1, p_acc, p_precision, p_recall = evaluate_model_performance(true_y=private_df["true-y"].to_numpy(),
+                                                                        predicted_y=private_df[
+                                                                            "ensemble-h-preds"].to_numpy())
+        g_f1, g_acc, g_precision, g_recall = evaluate_model_performance(true_y=government_df["true-y"].to_numpy(),
+                                                                        predicted_y=government_df[
+                                                                            "ensemble-h-preds"].to_numpy())
+        if subgroup == "private":
+            return p_acc, p_f1, p_precision, p_recall
+        elif subgroup == "government":
+            return g_acc, g_f1, g_precision, g_recall
+    elif pii == "age-group":
+        forties_df, fifties_df, sixties_df, seventies_df, eighty_and_over_df = obtain_subgroups(
+            task="evaluate", pii=pii, df=en_on_ep_df, preprocess=False)
+        if subgroup == "forties":
+            f1, acc, precision, recall = evaluate_model_performance(true_y=forties_df["true-y"].to_numpy(),
+                                                                    predicted_y=forties_df[
+                                                                        "ensemble-h-preds"].to_numpy())
+            return acc, f1, precision, recall
+        elif subgroup == "fifties":
+            f1, acc, precision, recall = evaluate_model_performance(true_y=fifties_df["true-y"].to_numpy(),
+                                                                    predicted_y=fifties_df[
+                                                                        "ensemble-h-preds"].to_numpy())
+            return acc, f1, precision, recall
+        elif subgroup == "sixties":
+            f1, acc, precision, recall = evaluate_model_performance(true_y=sixties_df["true-y"].to_numpy(),
+                                                                    predicted_y=sixties_df[
+                                                                        "ensemble-h-preds"].to_numpy())
+            return acc, f1, precision, recall
+        elif subgroup == "seventies":
+            f1, acc, precision, recall = evaluate_model_performance(true_y=seventies_df["true-y"].to_numpy(),
+                                                                    predicted_y=seventies_df[
+                                                                        "ensemble-h-preds"].to_numpy())
+            return acc, f1, precision, recall
+        elif subgroup == "eighty-and-over":
+            f1, acc, precision, recall = evaluate_model_performance(true_y=eighty_and_over_df["true-y"].to_numpy(),
+                                                                    predicted_y=eighty_and_over_df[
+                                                                        "ensemble-h-preds"].to_numpy())
+            return acc, f1, precision, recall
+    else:
+        return ValueError("The value for pii passed is incorrect. Expected values are:"
+                          " 'sex', 'race', 'age-group', and 'insurance'")
 
 
 # todo: ensemble to test
@@ -1404,6 +1566,9 @@ def plot_all_evaluation_results():
 # write_performance_of_models(model_type="single-model")
 # write_performance_of_models(model_type="ensemble")
 plot_all_evaluation_results()
+
+# evaluate_ensemble_on_entire_population_for_subgroups()
+
 # plot_training_results() # todo: revise this, determine if it needs to be here
 
 # todo: plot the graph of F1 with best model, very F1 with ensemble bottom-up
