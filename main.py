@@ -1,16 +1,23 @@
-# This is a sample Python script.
+import data_preprocessing
+import evaluate
+import model
+import plot
 
-# Press ⇧F10 to execute it or replace it with your code.
-# Press Double ⇧ to search everywhere for classes, files, tool windows, actions, and settings.
-
-
-def print_hi(name):
-    # Use a breakpoint in the code line below to debug your script.
-    print(f'Hi, {name}')  # Press ⌘F8 to toggle the breakpoint.
-
-
-# Press the green button in the gutter to run the script.
 if __name__ == '__main__':
-    print_hi('PyCharm')
+    # # obtain train and test sets (data_preprocessing)
+    # data_preprocessing.read_data()
+    #
+    # # train and predict (model)
+    # model.predict_discharge_on_entire_population()  # approaches 1 and 2
+    # model.predict_discharge_for_sub_populations()  # approach 3
+    # model.ensemble_on_entire_population()  # approach 4b
+    # model.ensemble_on_subpopulations()  # approach 4a
+    #
+    # # evaluate models (evaluate)
+    # evaluate.write_performance_of_models(model_type="single-model")
+    # evaluate.write_performance_of_models(model_type="ensemble")
+
+    # plot results (plot)
+    plot.plot_all_evaluation_results()
 
 # See PyCharm help at https://www.jetbrains.com/help/pycharm/
