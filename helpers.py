@@ -1,7 +1,6 @@
 from sklearn.impute import SimpleImputer
-from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier, VotingClassifier
+from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
 from sklearn.linear_model import LogisticRegression
-from sklearn.model_selection import train_test_split, cross_val_score, cross_validate
 
 from sklearn.neural_network import MLPClassifier
 from sklearn.pipeline import make_pipeline
@@ -13,26 +12,26 @@ import xgboost as xgb
 
 def flatten(l):
     """
-
-    :param l:
-    :return:
+    Helper funtion to flatten a list of lists into one list.
+    :param l: list of lists
+    :return: a list containing all the items in all the lists
     """
     return [item for sublist in l for item in sublist]
 
 
 def pre_modeling_pipeline(train_X, test_X=None):
     """
-
-    :param train_X:
-    :param test_X:
-    :return:
+    Simple pipeline to impute missing values in the training and test datasets.
+    The imputation function learned on the training set is used on the test set to avoid leakage
+    :param train_X: training set features only (no labels)
+    :param test_X: test set features only (no labels). This is optional to allow for CV on the training data.
+    Useful during training to make sure the pipeline works well before testing on the held out test set
+    :return: imputed training set (and test set, where relevant)
     """
     # impute missing values
     imputer = SimpleImputer(strategy="median")
-    # # imputer = SimpleImputer(strategy="mean")
+    # imputer = SimpleImputer(strategy="mean") # in some cases, it may be worth imputing using the mean value
     train_X = imputer.fit_transform(train_X)
-    # normalize? check whether it's valuable to normalize/scale data
-    # i'm doing this to buy myself the option of only working with train data until unless testing
     if test_X is not None:
         test_X = imputer.transform(test_X)
         return train_X, test_X
@@ -42,11 +41,15 @@ def pre_modeling_pipeline(train_X, test_X=None):
 
 def process_training_data(train_df, test_df=None, preprocess=True):
     """
-
-    :param train_df:
-    :param test_df:
-    :param preprocess:
-    :return:
+    Function to preprocess the training data. It removes unnamed columns in the dataframe,
+    extracts the features (by eliminating the outcome columns), imputes the missing values,
+    and returns the training features, and outcomes, separateky as numpy arrays
+    :param train_df: training dataframe
+    :param test_df: test dataframe (optional). Similar to impute, this is optional to allow the modeling process to
+    only use the training data until testing on the held out test is needed
+    :param preprocess: check for whether to impute the feature sets
+    :return: columns of the features and outcomes, training (and where applicable test) features,
+    and training (and where applicable test) outcomes
     """
     train_df = train_df.drop(train_df.filter(regex='Unnamed').columns, axis=1)
     train_X = train_df.drop(columns=["died-in-hosp?", "fav-disch-loc?"])
@@ -74,8 +77,8 @@ def process_training_data(train_df, test_df=None, preprocess=True):
 
 def classifiers_to_test():
     """
-
-    :return:
+    Definition of the classifiers to be tested.
+    :return: various classifiers to be trained on the dataset
     """
     dt_clf = DecisionTreeClassifier(random_state=0)
     rf_clf = RandomForestClassifier(random_state=0)
@@ -91,12 +94,15 @@ def classifiers_to_test():
 
 def obtain_subgroups(task, pii, df, preprocess=True):
     """
-
-    :param task:
-    :param pii:
-    :param df:
-    :param preprocess:
-    :return:
+    Obtains the defined subgroups (by sex, race, insurance type, and age-group) from a dataframe
+    :param task: whether the subgroup is needed for training or evaluation. Two values expected, 'train' or 'evaluate'.
+    If needed the task is train, the subgroup's dataframe is pre-processed using process_training_data()
+    before it is returned.
+    :param pii: the personal identifier used to generate the subgroups. Four values are expected: sex, race,
+    insurance type, and age-group
+    :param df: the dataframe from which the subgroups should be obtained
+    :param preprocess: whether the subgroup's data should be imputed or not
+    :return: subgroups by the chosen identifier
     """
     if task == "train":  # todo: this function can be optimized to avoid repeated code
         if pii == "sex":
@@ -107,8 +113,8 @@ def obtain_subgroups(task, pii, df, preprocess=True):
             return male_X, female_X, male_ys, female_ys, male_X_cols, female_X_cols
         elif pii == "insurance":
             private_df = df[df["insurance-private"] == 1]
-            government_df = df[(df["insurance-medicaid"] == 1) | (df["insurance-medicare"] == 1) | (df[
-                                                                                                        "insurance-government"] == 1)]
+            government_df = df[(df["insurance-medicaid"] == 1) | (df["insurance-medicare"] == 1) |
+                               (df["insurance-government"] == 1)]
             private_X_cols, private_X, private_ys = process_training_data(private_df, preprocess=preprocess)
             government_X_cols, government_X, government_ys = process_training_data(government_df, preprocess=preprocess)
             return private_X, government_X, private_ys, government_ys, private_X_cols, government_X_cols
@@ -129,7 +135,8 @@ def obtain_subgroups(task, pii, df, preprocess=True):
                    seventies_X_cols, eighty_and_over_X_cols
         elif pii == "race":
             white_df = df[df["race-white/caucasian-american"] == 1]
-            black_df = df[df["race-black/african-american"] == 1]
+            black_df = df[df["race-black/african-american"] == 1]  # the numbers were so small,
+            # these were merged along other ethnicities in non-white_df
             black_latino_native_df = df[(df["race-latinx/hispanic-american"] == 1) |
                                         (df["race-black/african-american"] == 1) |
                                         (df["race-alaska-native/american-indian"] == 1)]
@@ -141,7 +148,7 @@ def obtain_subgroups(task, pii, df, preprocess=True):
             white_X_cols, white_X, white_ys = process_training_data(white_df)
             non_white_X_cols, non_white_X, non_white_ys = process_training_data(non_white_df)
             return white_X, non_white_X, white_ys, non_white_ys, white_X_cols, non_white_X_cols
-    elif task == "evaluate":  # assumes segmentation is only needed for results for entire population
+    elif task == "evaluate":  # assumes segmentation is only from the entire population, i.e., df is the entire pop.
         if pii == "sex":
             male_df = df[df["gender-f"] == 0]
             female_df = df[df["gender-f"] == 1]

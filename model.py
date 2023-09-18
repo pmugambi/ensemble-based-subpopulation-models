@@ -686,16 +686,3 @@ def ensemble_on_subpopulations():
                                          eighty_and_over_test_ys],
                           group_names=["forties", "fifties", "sixties", "seventies", "eighty-and-over"], i=i, cols=cols,
                           train_save_dir=age_group_train_save_dir, pred_save_dir=age_group_pred_save_dir)
-
-
-# read_data()
-# predict_discharge_on_entire_population()
-# predict_discharge_for_sub_populations()
-# ensemble_on_entire_population()
-# ensemble_on_subpopulations()
-# write_performance_of_models(model_type="single-model")
-# write_performance_of_models(model_type="ensemble")
-# plot_all_evaluation_results()
-
-# evaluate_ensemble_on_entire_population_for_subgroups()
-

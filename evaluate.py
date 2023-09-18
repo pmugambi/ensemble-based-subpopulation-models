@@ -5,6 +5,14 @@ from helpers import classifiers_to_test, obtain_subgroups, flatten
 
 
 def obtain_best_model(level, y_name, pii=None):
+    """
+    Given the results of each model's performance when trained and evaluated on the training data using CV,
+    this function returns the classifier with the best performance, based on a predefined metric
+    :param level: whether the evaluation is at a population or subgroup level
+    :param y_name: the outcome being evaluated. Two values expected are "in-hospital mortality" and "discharge location"
+    :param pii: the identifier used to split data into subgroups if the evaluation is at the subgroup level
+    :return: the classifier with the highest score (based on the predetermined metric)
+    """
     base_dir = "./data/analysis/models/single-model/training/" + y_name + "/" + level + "/"
     if level == "entire-population":
         cv_training_results_df = pd.read_csv(base_dir + "cv-training-results-for-" + y_name + "-" + level + ".csv")
@@ -59,13 +67,21 @@ def obtain_best_model(level, y_name, pii=None):
 
 
 def top_model_by_metric(df, metric="f1"):
+    """
+    Obtains the model with the highest score by the provided metric
+    :param df: the dataframe containing training results of various classifiers
+    :param metric: the performance metric to be used to determine the top classifier
+    :return: the name of the classifier with the highest score by the metric
+    """
     # best model by f1 score
     if metric == "f1":
         best = df[df["cv-f1-mean"] == df["cv-f1-mean"].max()]["model-name"].values.tolist()[0]
+    # best model by balanced-accuracy score
     elif metric == "balanced-accuracy":
         best = \
             df[df["cv-balanced-accuracy-mean"] == df["cv-balanced-accuracy-mean"].max()]["model-name"].values.tolist()[
-                0]  # taking only the best 1
+                0]
+    # best model by accuracy score
     elif metric == "accuracy":
         best = df[df["cv-accuracy-mean"] == df["cv-accuracy-mean"].max()]["model-name"].values.tolist()[0]
     else:
@@ -75,15 +91,16 @@ def top_model_by_metric(df, metric="f1"):
 
 def evaluate_model_performance(true_y, predicted_y):
     """
-
-    :param true_y:
-    :param predicted_y:
-    :return:
+    Computes the model's F1, accuracy, precision, and recall score
+    :param true_y: true value of y
+    :param predicted_y: predicted y
+    :return: F1,accuracy, precision,and recall scores
     """
     # compute f1, recall, and precision
     # micro_f1_score = f1_score(true_y, predicted_y, average='micro')
     # macro_f1_score = f1_score(true_y, predicted_y, average='macro')
-    pos_class_f1_score = f1_score(true_y, predicted_y, average='binary')
+    pos_class_f1_score = f1_score(true_y, predicted_y, average='binary')  # computing binary f1, precision, recall
+    # because we're interested in the model's performance on the positive class label (i.e., class 1)
     accuracy = accuracy_score(true_y, predicted_y)
     precision = precision_score(true_y, predicted_y, average='binary')
     recall = recall_score(true_y, predicted_y, average='binary')
@@ -91,24 +108,33 @@ def evaluate_model_performance(true_y, predicted_y):
 
 
 def evaluate_performance_of_single_models(level, pii, y_name, metric):
+    """
+    Computes F1, accuracy, precision, and recall scores of one-model-for-all or one-model-for-each-subgroup models
+    :param level: whether the models were trained for the entire population or for a subgroup
+    :param pii: the identifier to use to obtain the subgroups that should be evaluated
+    :param y_name: the name of the outcome being evaluated
+    :param metric: the metric to be used to determine the best-performing model for each outcome
+    (F1 for in-hosp mortality, and Accuracy for discharge location)
+    :return: the performance of the models for the entire populations and all subgroups
+    """
     _, classifier_names = classifiers_to_test()
     sex_group_names = ["male", "female"]
     race_group_names = ["white", "non-white"]
     insurance_group_names = ["private", "government"]
     age_group_names = ["forties", "fifties", "sixties", "seventies", "eighty-and-over"]
-    # todo: create path to main folder here: data-training
+    results_dfs_path = "./data/analysis/models/single-model/training/" + y_name
 
     # entire population
     if level == "entire-population":
         un_c_groups_performance = []
         c_groups_performance = []
         # get the classifier with the best performance
-        cv_training_results_df = pd.read_csv("./data/analysis/models/single-model/training/" + y_name +
+        cv_training_results_df = pd.read_csv(results_dfs_path +
                                              "/entire-population/cv-training-results-for-" + y_name +
                                              "-entire-population.csv")
         best_ep_clf = top_model_by_metric(df=cv_training_results_df, metric=metric)
         print("best_clf = ", best_ep_clf)
-        ep_predictions_df = pd.read_csv("./data/analysis/models/single-model/prediction/" + y_name +
+        ep_predictions_df = pd.read_csv(results_dfs_path +
                                         "/entire-population/features-and-prediction-results-for-" + y_name +
                                         "-entire-population.csv")
         # evaluate entire population's performance
@@ -161,16 +187,14 @@ def evaluate_performance_of_single_models(level, pii, y_name, metric):
         # obtain models trained on each subpopulation separately
         groups_performance = []
         for j in range(len(groups)):
-            group_cv_training_results_df = pd.read_csv(
-                "./data/analysis/models/single-model/training/" + y_name +
-                "/subgroup/" + pii + "/cv-training-results-for-"
-                + y_name + "-" + groups[j] +
-                "-patients.csv")
+            group_cv_training_results_df = pd.read_csv(results_dfs_path + "/subgroup/" + pii +
+                                                       "/cv-training-results-for-" + y_name + "-" + groups[j] +
+                                                       "-patients.csv")
             group_best_clf = top_model_by_metric(df=group_cv_training_results_df, metric=metric)
 
-            group_predictions_df = pd.read_csv("./data/analysis/models/single-model/prediction/" + y_name +
-                                               "/subgroup/" + pii + "/features-and-prediction-results-for-"
-                                               + y_name + "-" + groups[j] + "-patients.csv")
+            group_predictions_df = pd.read_csv(results_dfs_path + "/subgroup/" + pii +
+                                               "/features-and-prediction-results-for-" + y_name + "-" + groups[j] +
+                                               "-patients.csv")
             group_binary_f1, group_accuracy, group_precision, group_recall = evaluate_model_performance(
                 true_y=group_predictions_df["true-y"],
                 predicted_y=group_predictions_df[group_best_clf + "-preds"])
@@ -179,13 +203,20 @@ def evaluate_performance_of_single_models(level, pii, y_name, metric):
 
 
 def evaluate_performance_of_ensemble_models(level, pii, y_name):
+    """
+    Computes F1, accuracy, precision, and recall scores of ensemble models
+    :param level: whether the ensemble happens at a subgroup or population level
+    :param pii: the identifier to create subgroups, e.g., race/sex
+    :param y_name: the outcome being evaluated
+    :return: the performance of the model at the relevant level
+    """
     sex_group_names = ["male", "female"]
     race_group_names = ["white", "non-white"]
     insurance_group_names = ["private", "government"]
     age_group_names = ["forties", "fifties", "sixties", "seventies", "eighty-and-over"]
 
-    # ensembling on the entire population # bottom-up, this needs to be analyzed by computing all metrics on
-    # entire pop
+    # ensemble at the entire population, i.e., bottom-up.
+    # all metrics are computed on the entire pop
     if level == "entire-population":
         y_performances = []
         ep_predictions_df = pd.read_csv("./data/analysis/models/ensemble/prediction/" + y_name +
@@ -227,6 +258,13 @@ def evaluate_performance_of_ensemble_models(level, pii, y_name):
 
 
 def evaluate_ensemble_on_entire_population_for_subgroups(y_name, pii, subgroup):
+    """
+    Evaluating the performance of the model ensemble at the population level for the subgroups
+    :param y_name: the name of the outcome being evaluated
+    :param pii: the identifier used to obtain the subgroups
+    :param subgroup: the subgroup name # todo: some redundancy here, could be optimized
+    :return: F1, accuracy, precision, and recall values of the model for each subgroup
+    """
     en_on_ep_df = pd.read_csv("./data/analysis/models/ensemble/prediction/"
                               + y_name + "/ensemble-on-entire-population/" + pii +
                               "/features-and-predictions-of-ensemble-by-"
@@ -301,6 +339,11 @@ def evaluate_ensemble_on_entire_population_for_subgroups(y_name, pii, subgroup):
 
 
 def write_performance_of_models(model_type):
+    """
+    Calls all evaluation functions and writes their results into dataframes and stores them as csv for use in plot.py
+    :param model_type: whether the model is single-classifier or ensemble
+    :return: nothing, all results are written to csv and saved in ./data/analysis/evaluation/
+    """
     y_names = ["y1-in-hosp-mortality", "y2-favorable-discharge-loc"]
     metrics = ["f1", "accuracy"]
     piis = ["sex", "race", "insurance", "age-group"]

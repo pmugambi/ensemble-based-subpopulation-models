@@ -5,24 +5,22 @@ from sklearn.model_selection import train_test_split
 
 def read_data():
     """
-
-    :return:
+    Reads the patients with AMI data file, creates dummies for categorical variables,
+    and splits data into train (66%) and test (33%) sets
+    :return: nothing. the train and test sets are written as csv files into ./data/
     """
     mimic_data = pd.read_csv("./data/mimic-cohort2.2-ami-is-primary-diagnosis-and-healthy.csv")
     mimic_data = mimic_data.drop(mimic_data.filter(regex='Unnamed').columns, axis=1)
-    # print("mimic_data.head() = ", mimic_data.columns, len(mimic_data), mimic_data.dtypes)
 
     # assign race groups
     mimic_data["race"] = mimic_data["ethnicity"].str.lower().apply(lambda x: group_assign_race(x))
 
     # create a dead? column
     mimic_data["died-in-hosp?"] = np.where(mimic_data["discharge_location"] == "dead/expired", 1, 0)
-    # print('mimic_data["died-in-hosp?"] values = ', sum(mimic_data["died-in-hosp?"].values.tolist()))
 
     # create a favorable-dl? column
     mimic_data["fav-disch-loc?"] = np.where(mimic_data["discharge_location"].isin(
         ["home", "home health care", "home with home iv providr"]), 1, 0)
-    # print('mimic_data["fav-disch-loc?"] values = ', sum(mimic_data["fav-disch-loc?"].values.tolist()))
 
     # preprocess data before splitting it
     categorical_columns = ["agegroup", "gender", "insurance", "race"]
@@ -39,14 +37,10 @@ def read_data():
     ohe_categorical_data_df = convert_categorical_to_numerical(
         df=mimic_data[categorical_columns], categorical_variables=categorical_columns,
         to_drop=categorical_values_to_drop)
-    # print("ohe_categorical_data_df = ", ohe_categorical_data_df.head(), len(ohe_categorical_data_df),
-    #       ohe_categorical_data_df.columns.tolist())
 
     # create a df of relevant model features
     df = mimic_data[model_non_categorical_features]
     df = pd.concat([df, ohe_categorical_data_df, mimic_data[outcome_features]], axis=1)
-    # print("df.head() = ", df.head(), "df cols = ", df.columns.tolist(), "no of cols =", len(df.columns.tolist()),
-    #       "len(df)=", len(df))
 
     # split data into train test
     train, test = train_test_split(df, test_size=0.33, random_state=13)
